@@ -4,10 +4,10 @@
 
 This project is a lightweight quadcopter dynamics simulator with an interactive Matplotlib viewer.
 
-> ![NOTE]
+> [!NOTE]
 > This project was built collaboratively with AI assistance from Codex. ALL code has been reviewed by Human engineers.
 
-> ![IMPORTANT]
+> [!IMPORTANT]
 > Approximations have been made in the aerodynamic modeling and simulation of this project.
 > Assumptions are clearly stated in this README.
 
