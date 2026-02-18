@@ -1,3 +1,102 @@
-.venv/
+# ------------------------------
+# OS junk
+# ------------------------------
 .DS_Store
 */.DS_Store
+Thumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.Spotlight-V100/
+.Trashes/
+._*
+
+# ------------------------------
+# Python bytecode / caches
+# ------------------------------
+__pycache__/
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# ------------------------------
+# Python tooling caches
+# ------------------------------
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.pyre/
+.hypothesis/
+.tox/
+.nox/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+.cache/
+
+# ------------------------------
+# Virtual environments
+# ------------------------------
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# ------------------------------
+# Packaging / build artifacts
+# ------------------------------
+build/
+dist/
+site/
+*.egg-info/
+*.egg
+.eggs/
+pip-wheel-metadata/
+
+# ------------------------------
+# Jupyter
+# ------------------------------
+.ipynb_checkpoints/
+
+# ------------------------------
+# IDE / editor
+# ------------------------------
+.vscode/
+.idea/
+*.iml
+*.suo
+*.user
+*.userossc
+*.sln.docstates
+*.swp
+*.swo
+*~
+
+# ------------------------------
+# Logs / local runtime files
+# ------------------------------
+*.log
+*.out
+*.err
+*.pid
+*.pid.lock
+logs/
+tmp/
+temp/
+
+# ------------------------------
+# Local env / secrets
+# ------------------------------
+.env
+.env.*
+*.local
+
+# ------------------------------
+# Misc generated artifacts
+# ------------------------------
+*.bak
+*.orig
+*.rej

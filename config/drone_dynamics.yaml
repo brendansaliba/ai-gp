@@ -1,0 +1,29 @@
+simulation:
+  dt: 0.01 # simulation timestep [s]
+  steps: 500 # number of simulation steps [-]
+  gravity: 9.81 # gravitational acceleration [m/s^2]
+
+dynamics:
+  mass: 2 # vehicle mass [kg]
+  inertia_diag: [0.02, 0.02, 0.05] # body inertia diagonal [Ixx, Iyy, Izz] [kg*m^2]
+  arm_length: 0.11 # distance from center of mass to each motor [m]
+  yaw_drag_coeff: 0.004 # yaw torque coefficient per motor thrust [N*m/N]
+  motor_spin_dir: [1.0, -1.0, 1.0, -1.0] # motor spin directions [CCW=+1, CW=-1]
+
+initial_state:
+  position: [0.0, 0.0, 40.0] # initial world position [x, y, z] [m]
+  velocity: [0.0, 0.0, 0.0] # initial world velocity [vx, vy, vz] [m/s]
+  euler_deg: [0.0, 0.0, 0.0] # initial attitude [roll, pitch, yaw] [deg]
+  angular_velocity: [0.0, 0.0, 0.0] # initial body angular velocity [p, q, r] [rad/s]
+
+thrust:
+  mode: manual # thrust mode: "manual" or "hover" [-]
+  manual_motor_thrust_newtons: [5.0, 5.0, 5.0, 5.0] # per-motor thrust [m1, m2, m3, m4] [N]
+
+perturbations:
+  enable: true # enable small aero/atmospheric disturbances [bool]
+  perturbation_seed: 42 # random seed for reproducible perturbations [-]
+  motor_thrust_noise_std: 0.005 # Gaussian std-dev added to each motor thrust [N]
+  motor_thrust_gust_amp: 0.01 # low-frequency motor thrust gust amplitude [N]
+  attitude_torque_noise_std: 0.00002 # Gaussian std-dev added to body torque [N*m]
+  attitude_torque_gust_amp: 0.00015 # low-frequency body torque gust amplitude [N*m]
