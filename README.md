@@ -42,7 +42,7 @@ All runtime parameters are in:
 Key groups:
 
 - `simulation`: `dt`, `steps`, `gravity`
-- `dynamics`: mass, inertia, arm length, yaw drag coefficient, motor spin directions
+- `dynamics`: mass, inertia, arm length, yaw drag coefficient, attitude-drag parameters (`drag_coeff_min`, `drag_coeff_max`, `drag_reference_area`, `air_density`, `wind_velocity_world`), motor spin directions
 - `initial_state`: initial position/velocity/attitude/angular velocity
 - `thrust`: `mode: hover` uses equal hover thrust on all motors; `mode: manual` uses constant per-motor values from `manual_motor_thrust_newtons`
 - `perturbations`: small stochastic + sinusoidal disturbances
@@ -87,6 +87,45 @@ $$
 \tau = \tau_{\mathrm{arm}} + \tau_{\mathrm{yaw}} + \tau_{\mathrm{perturb}}
 $$
 
+### Aerodynamic Drag Model
+
+The translational drag force is based on relative airflow and current vehicle attitude.
+
+- Relative airflow velocity:
+  $$
+  v_{\mathrm{rel}} = v - v_{\mathrm{wind}}
+  $$
+- Airflow direction:
+  $$
+  \hat{a} = -\frac{v_{\mathrm{rel}}}{\|v_{\mathrm{rel}}\|}
+  $$
+- Body normal in world frame:
+  $$
+  n_b = R(q)\begin{bmatrix}0\\0\\1\end{bmatrix}
+  $$
+- Orientation alignment term:
+  $$
+  s = \left|n_b \cdot \hat{a}\right|
+  $$
+  where $s=0$ means airflow is mostly along the vehicle plane (minimum drag), and $s=1$ means airflow is normal to the plane (maximum drag).
+- Drag coefficient interpolation:
+  $$
+  C_d = C_{d,\min} + \left(C_{d,\max} - C_{d,\min}\right)s
+  $$
+- Drag force magnitude:
+  $$
+  \|F_d\| = \frac{1}{2}\rho C_d A \|v_{\mathrm{rel}}\|^2
+  $$
+- Drag direction (opposes relative motion):
+  $$
+  F_d = -\|F_d\|\frac{v_{\mathrm{rel}}}{\|v_{\mathrm{rel}}\|}
+  $$
+
+The translational update uses thrust + drag + gravity:
+$$
+a = \frac{R(q)\begin{bmatrix}0\\0\\T\end{bmatrix} + F_d}{m} + \begin{bmatrix}0\\0\\-g\end{bmatrix}
+$$
+
 ### Rotational Dynamics
 
 Rigid-body rotational dynamics are integrated as:
@@ -112,10 +151,10 @@ The simulator uses explicit Euler integration for both translational and rotatio
 This is intentionally simplified for clarity and interactivity:
 
 - Rigid body with fixed diagonal inertia tensor (no inertia coupling changes)
-- No aerodynamic drag/lift model on the airframe beyond small synthetic perturbations
+- Drag uses a single scalar coefficient interpolated by attitude/airflow alignment (not a full 6-DoF aero model)
 - No rotor dynamics (instantaneous thrust response)
 - No motor saturation dynamics except non-negative thrust clipping
-- No ground effect, blade flapping, induced-flow model, or wind field model
+- No ground effect, blade flapping, induced-flow model, or spatially varying wind field model
 - Fixed time step, first-order integration (can accumulate numerical error)
 - Yaw drag represented by a linear coefficient (`yaw_drag_coeff`)
 

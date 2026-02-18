@@ -34,10 +34,7 @@ def build_motor_thrust_fn(thrust_cfg: dict):
                 "For thrust mode 'manual', manual_motor_thrust_newtons must be a 4-element list."
             )
 
-        def manual_motor_thrust(_t, _step_idx, _cfg, _hover_thrust_per_motor):
-            return manual_values
-
-        return manual_motor_thrust
+        return manual_values
 
     raise ValueError(f"Unsupported thrust.mode '{mode}'. Use 'hover' or 'manual'.")
 
@@ -68,6 +65,12 @@ def main():
         inertia=np.diag(np.asarray(dyn_cfg["inertia_diag"], dtype=float)),
         arm_length=float(dyn_cfg["arm_length"]),
         yaw_drag_coeff=float(dyn_cfg["yaw_drag_coeff"]),
+        enable_attitude_drag=bool(dyn_cfg.get("enable_attitude_drag", True)),
+        drag_coeff_min=float(dyn_cfg["drag_coeff_min"]),
+        drag_coeff_max=float(dyn_cfg["drag_coeff_max"]),
+        drag_reference_area=float(dyn_cfg.get("drag_reference_area", 0.03)),
+        air_density=float(dyn_cfg.get("air_density", 1.225)),
+        wind_velocity_world=np.asarray(dyn_cfg.get("wind_velocity_world", [0.0, 0.0, 0.0]), dtype=float),
         motor_spin_dir=np.asarray(dyn_cfg["motor_spin_dir"], dtype=float),
         initial_pos=np.asarray(init_cfg["position"], dtype=float),
         initial_vel=np.asarray(init_cfg["velocity"], dtype=float),

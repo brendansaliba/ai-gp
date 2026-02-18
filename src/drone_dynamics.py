@@ -33,6 +33,12 @@ class DroneDynamicsConfig:
     inertia: np.ndarray = field(default_factory=lambda: np.diag([0.002, 0.002, 0.004]))
     arm_length: float = 0.17
     yaw_drag_coeff: float = 0.004
+    enable_attitude_drag: bool = True
+    drag_coeff_min: float = 0.2
+    drag_coeff_max: float = 1.2
+    drag_reference_area: float = 0.03  # m^2
+    air_density: float = 1.225  # kg/m^3
+    wind_velocity_world: np.ndarray = field(default_factory=lambda: np.zeros(3))  # [vx, vy, vz] m/s
     motor_spin_dir: np.ndarray = field(default_factory=lambda: np.array([1.0, -1.0, 1.0, -1.0]))
     initial_pos: np.ndarray = field(default_factory=lambda: np.array([0.0, 0.0, 10.0]))
     initial_vel: np.ndarray = field(default_factory=lambda: np.zeros(3))
@@ -55,6 +61,7 @@ class SimulationResult:
     dt: float
     time: np.ndarray
     pos: np.ndarray
+    vel: np.ndarray
     quat: np.ndarray
     motor_thrust: np.ndarray
     torque: np.ndarray
@@ -64,6 +71,8 @@ class SimulationResult:
 def simulate_quadcopter(cfg: DroneDynamicsConfig) -> SimulationResult:
     if cfg.motor_thrust_fn is None:
         raise ValueError("DroneDynamicsConfig.motor_thrust_fn is required.")
+    if cfg.drag_coeff_max < cfg.drag_coeff_min:
+        raise ValueError("drag_coeff_max must be greater than or equal to drag_coeff_min.")
 
     pos = cfg.initial_pos.astype(float).copy()
     vel = cfg.initial_vel.astype(float).copy()
@@ -85,6 +94,7 @@ def simulate_quadcopter(cfg: DroneDynamicsConfig) -> SimulationResult:
 
     time = np.arange(cfg.steps) * cfg.dt
     pos_history = np.zeros((cfg.steps, 3))
+    vel_history = np.zeros((cfg.steps, 3))
     quat_history = np.zeros((cfg.steps, 4))
     motor_thrust_history = np.zeros((cfg.steps, 4))
     torque_history = np.zeros((cfg.steps, 3))
@@ -128,11 +138,26 @@ def simulate_quadcopter(cfg: DroneDynamicsConfig) -> SimulationResult:
 
         rot = Rotation.from_quat(quat[[1, 2, 3, 0]]).as_matrix()
         thrust_world = rot @ np.array([0.0, 0.0, total_thrust])
-        acc_world = thrust_world / cfg.mass + np.array([0.0, 0.0, -cfg.g])
+        drag_force_world = np.zeros(3)
+        if cfg.enable_attitude_drag:
+            rel_air_velocity = vel - cfg.wind_velocity_world
+            rel_speed = np.linalg.norm(rel_air_velocity)
+            if rel_speed > 1e-8:
+                # Airflow direction is opposite vehicle motion through air.
+                airflow_dir_world = -rel_air_velocity / rel_speed
+                body_z_world = rot[:, 2]
+                # 0 -> airflow parallel to vehicle plane (minimal drag), 1 -> normal (max drag).
+                normal_alignment = np.abs(np.dot(body_z_world, airflow_dir_world))
+                drag_coeff = cfg.drag_coeff_min + (cfg.drag_coeff_max - cfg.drag_coeff_min) * normal_alignment
+                drag_mag = 0.5 * cfg.air_density * drag_coeff * cfg.drag_reference_area * rel_speed**2
+                drag_force_world = -drag_mag * (rel_air_velocity / rel_speed)
+
+        acc_world = (thrust_world + drag_force_world) / cfg.mass + np.array([0.0, 0.0, -cfg.g])
         vel += acc_world * cfg.dt
         pos += vel * cfg.dt
 
         pos_history[i] = pos
+        vel_history[i] = vel
         quat_history[i] = quat
         motor_thrust_history[i] = motor_thrusts
         torque_history[i] = torque_body
@@ -141,6 +166,7 @@ def simulate_quadcopter(cfg: DroneDynamicsConfig) -> SimulationResult:
         dt=cfg.dt,
         time=time,
         pos=pos_history,
+        vel=vel_history,
         quat=quat_history,
         motor_thrust=motor_thrust_history,
         torque=torque_history,

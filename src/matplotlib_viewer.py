@@ -122,6 +122,16 @@ class MatplotlibQuadViewer:
         self.ax_pos.grid(alpha=0.25)
         self.ax_pos.legend(loc="upper left")
 
+        self.airspeed = np.linalg.norm(self.result.vel, axis=1)
+        self.ax_speed = self.ax_pos.twinx()
+        self.ax_speed.set_ylabel("Airspeed [m/s]", color="tab:orange")
+        self.ax_speed.tick_params(axis="y", colors="tab:orange")
+        self.ax_speed.plot(self.result.time, self.airspeed, color="tab:orange", lw=1.4, label="airspeed")
+        self.speed_cursor = self.ax_speed.axvline(0.0, color="tab:orange", ls=":", lw=1.0, alpha=0.8)
+        speed_max = max(0.5, float(np.max(self.airspeed)))
+        self.ax_speed.set_ylim(0.0, speed_max * 1.1)
+        self.ax_speed.legend(loc="upper right")
+
         slider_ax = self.fig.add_axes([0.2, 0.05, 0.6, 0.03])
         self.time_slider = Slider(slider_ax, "Frame", 0, self.steps - 1, valinit=0, valstep=1)
         self.time_slider.on_changed(self._on_slider_change)
@@ -182,6 +192,7 @@ class MatplotlibQuadViewer:
             thrust_line.set_3d_properties([rotor[2], thrust_tip[2]])
 
         self.pos_cursor.set_xdata([self.result.time[frame_idx], self.result.time[frame_idx]])
+        self.speed_cursor.set_xdata([self.result.time[frame_idx], self.result.time[frame_idx]])
         self.fig.canvas.draw_idle()
 
     def _on_slider_change(self, value):

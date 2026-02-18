@@ -8,6 +8,12 @@ dynamics:
   inertia_diag: [0.02, 0.02, 0.05] # body inertia diagonal [Ixx, Iyy, Izz] [kg*m^2]
   arm_length: 0.11 # distance from center of mass to each motor [m]
   yaw_drag_coeff: 0.004 # yaw torque coefficient per motor thrust [N*m/N]
+  enable_attitude_drag: true # enable attitude/airflow dependent drag model [bool]
+  drag_coeff_min: 0.15 # minimum drag coefficient when body plane is aligned with airflow [-]
+  drag_coeff_max: 1.10 # maximum drag coefficient when airflow is normal to body plane [-]
+  drag_reference_area: 0.03 # aerodynamic reference area used in drag force model [m^2]
+  air_density: 1.225 # air density for drag force computation [kg/m^3]
+  wind_velocity_world: [0.0, 0.0, 0.0] # ambient wind velocity in world frame [vx, vy, vz] [m/s]
   motor_spin_dir: [1.0, -1.0, 1.0, -1.0] # motor spin directions [CCW=+1, CW=-1]
 
 initial_state:
