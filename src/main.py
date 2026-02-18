@@ -34,7 +34,10 @@ def build_motor_thrust_fn(thrust_cfg: dict):
                 "For thrust mode 'manual', manual_motor_thrust_newtons must be a 4-element list."
             )
 
-        return manual_values
+        def manual_motor_thrust(_t, _step_idx, _cfg, _hover_thrust_per_motor):
+            return manual_values
+
+        return manual_motor_thrust
 
     raise ValueError(f"Unsupported thrust.mode '{mode}'. Use 'hover' or 'manual'.")
 
