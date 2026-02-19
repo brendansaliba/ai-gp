@@ -36,8 +36,12 @@ class MatplotlibQuadViewer:
         self.ax_world.set_zlabel("Z [m]")
         self.ax_world.zaxis.label.set_color("tab:blue")
         self.ax_world.tick_params(axis="z", colors="tab:blue")
-        mins = np.min(self.result.pos, axis=0)
-        maxs = np.max(self.result.pos, axis=0)
+        world_points = [self.result.pos]
+        if self.result.desired_path is not None and len(self.result.desired_path) > 0:
+            world_points.append(self.result.desired_path)
+        world_cloud = np.vstack(world_points)
+        mins = np.min(world_cloud, axis=0)
+        maxs = np.max(world_cloud, axis=0)
         center = 0.5 * (mins + maxs)
         radius = max(1.5, 0.6 * np.max(maxs - mins))
         self.ax_world.set_xlim(center[0] - radius, center[0] + radius)
@@ -58,7 +62,30 @@ class MatplotlibQuadViewer:
         self.ax_world.text(*(triad_origin + np.array([0.0, triad_len * 1.1, 0.0])), "+Y", color="g", fontsize=8)
         self.ax_world.text(*(triad_origin + np.array([0.0, 0.0, triad_len * 1.1])), "+Z", color="b", fontsize=8)
 
-        self.path_line, = self.ax_world.plot([], [], [], "k--", lw=1, alpha=0.6, label="path")
+        self.path_line, = self.ax_world.plot([], [], [], "k-", lw=1.6, alpha=0.8, label="actual")
+        self.desired_path_line = None
+        self.waypoint_points = None
+        self.active_waypoint_point = None
+        if self.result.desired_path is not None and len(self.result.desired_path) > 0:
+            self.desired_path_line, = self.ax_world.plot(
+                self.result.desired_path[:, 0],
+                self.result.desired_path[:, 1],
+                self.result.desired_path[:, 2],
+                color="tab:purple",
+                lw=1.4,
+                ls="--",
+                alpha=0.9,
+                label="desired",
+            )
+            self.waypoint_points = self.ax_world.scatter(
+                self.result.desired_path[:, 0],
+                self.result.desired_path[:, 1],
+                self.result.desired_path[:, 2],
+                c="tab:purple",
+                s=24,
+                alpha=0.8,
+            )
+            self.active_waypoint_point = self.ax_world.scatter([], [], [], c="tab:red", s=42, marker="x")
         self.body_x, = self.ax_world.plot([], [], [], "r-", lw=2, label="body x")
         self.body_y, = self.ax_world.plot([], [], [], "g-", lw=2, label="body y")
         self.body_z, = self.ax_world.plot([], [], [], "b-", lw=2, label="body z")
@@ -166,6 +193,10 @@ class MatplotlibQuadViewer:
         self.body_z.set_data([p[0], z_axis[0]], [p[1], z_axis[1]])
         self.body_z.set_3d_properties([p[2], z_axis[2]])
         self.point._offsets3d = ([p[0]], [p[1]], [p[2]])
+        if self.result.desired_path is not None and len(self.result.desired_path) > 0 and self.active_waypoint_point is not None:
+            active_idx = int(np.clip(self.result.target_waypoint_idx[frame_idx], 0, len(self.result.desired_path) - 1))
+            active_wp = self.result.desired_path[active_idx]
+            self.active_waypoint_point._offsets3d = ([active_wp[0]], [active_wp[1]], [active_wp[2]])
 
         arm_x_world = (rot @ self.arm_x_local.T).T
         arm_y_world = (rot @ self.arm_y_local.T).T

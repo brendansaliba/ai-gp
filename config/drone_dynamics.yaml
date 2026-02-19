@@ -1,6 +1,6 @@
 simulation:
   dt: 0.01 # simulation timestep [s]
-  steps: 500 # number of simulation steps [-]
+  steps: 2000 # number of simulation steps [-]
   gravity: 9.81 # gravitational acceleration [m/s^2]
 
 dynamics:
@@ -23,8 +23,50 @@ initial_state:
   angular_velocity: [0.0, 0.0, 0.0] # initial body angular velocity [p, q, r] [rad/s]
 
 thrust:
-  mode: manual # thrust mode: "manual" or "hover" [-]
+  mode: flight_controller # thrust mode: "manual", "hover", or "flight_controller" [-]
   manual_motor_thrust_newtons: [5.0, 5.0, 5.0, 5.0] # per-motor thrust [m1, m2, m3, m4] [N]
+  waypoints_xyz:
+    - [40.0, 0.0, 40.0]
+    - [38.0, 4.6, 40.0]
+    - [32.4, 8.8, 40.0]
+    - [23.5, 12.1, 40.0]
+    - [12.4, 14.3, 40.0]
+    - [0.0, 15.0, 40.0]
+    - [-12.4, 14.3, 40.0]
+    - [-23.5, 12.1, 40.0]
+    - [-32.4, 8.8, 40.0]
+    - [-38.0, 4.6, 40.0]
+    - [-40.0, 0.0, 40.0]
+    - [-38.0, -4.6, 40.0]
+    - [-32.4, -8.8, 40.0]
+    - [-23.5, -12.1, 40.0]
+    - [-12.4, -14.3, 40.0]
+    - [0.0, -15.0, 40.0]
+    - [12.4, -14.3, 40.0]
+    - [23.5, -12.1, 40.0]
+    - [32.4, -8.8, 40.0]
+    - [38.0, -4.6, 40.0]
+  controller:
+    waypoint_tolerance_m: 1.5
+    max_speed_mps: 2.0
+    max_accel_mps2: 10.0
+    max_tilt_deg: 50.0
+    max_motor_thrust_n: 40.0
+    max_yaw_rate_rad_s: 0.8
+    kp_pos: 0.7
+    ki_pos: 0.03
+    kd_vel: 1.2
+    kp_att_rp: 4.0
+    ki_att_rp: 0.05
+    kd_rate_xy: 1.0
+    kp_yaw: 1.6
+    ki_yaw: 0.05
+    kd_yaw_rate: 0.45
+    pos_integral_limit: 6.0
+    att_integral_limit: 0.4
+    yaw_integral_limit: 1.2
+    max_torque_xy_nm: 0.8
+    max_torque_z_nm: 0.4
 
 perturbations:
   enable: true # enable small aero/atmospheric disturbances [bool]

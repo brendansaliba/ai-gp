@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Callable
+import inspect
 
 import numpy as np
 from scipy.spatial.transform import Rotation
@@ -51,9 +52,19 @@ class DroneDynamicsConfig:
     attitude_torque_noise_std: float = 2e-5  # N*m
     attitude_torque_gust_amp: float = 5e-5  # N*m
     perturbation_seed: int | None = 42
+    desired_path: np.ndarray | None = None
     # Required motor thrust provider:
-    # fn(t, step_idx, cfg, hover_thrust_per_motor) -> array-like(4) [N]
-    motor_thrust_fn: Callable[[float, int, "DroneDynamicsConfig", float], np.ndarray] | None = None
+    # fn(t, step_idx, cfg, hover_thrust_per_motor, state) -> array-like(4) [N]
+    # Optionally returns: (array-like(4), active_waypoint_idx)
+    motor_thrust_fn: Callable[[float, int, "DroneDynamicsConfig", float, "SimulationState"], np.ndarray] | None = None
+
+
+@dataclass
+class SimulationState:
+    pos: np.ndarray
+    vel: np.ndarray
+    quat: np.ndarray
+    ang_vel: np.ndarray
 
 
 @dataclass
@@ -65,6 +76,8 @@ class SimulationResult:
     quat: np.ndarray
     motor_thrust: np.ndarray
     torque: np.ndarray
+    target_waypoint_idx: np.ndarray
+    desired_path: np.ndarray | None
     hover_thrust_per_motor: float
 
 
@@ -98,10 +111,28 @@ def simulate_quadcopter(cfg: DroneDynamicsConfig) -> SimulationResult:
     quat_history = np.zeros((cfg.steps, 4))
     motor_thrust_history = np.zeros((cfg.steps, 4))
     torque_history = np.zeros((cfg.steps, 3))
+    target_waypoint_idx_history = np.full(cfg.steps, -1, dtype=int)
+    motor_fn_param_count = len(inspect.signature(cfg.motor_thrust_fn).parameters)
 
     for i in range(cfg.steps):
         t = i * cfg.dt
-        motor_thrusts = np.asarray(cfg.motor_thrust_fn(t, i, cfg, hover_thrust_per_motor), dtype=float)
+        state = SimulationState(
+            pos=pos.copy(),
+            vel=vel.copy(),
+            quat=quat.copy(),
+            ang_vel=ang_vel.copy(),
+        )
+        if motor_fn_param_count >= 5:
+            thrust_cmd = cfg.motor_thrust_fn(t, i, cfg, hover_thrust_per_motor, state)
+        else:
+            thrust_cmd = cfg.motor_thrust_fn(t, i, cfg, hover_thrust_per_motor)
+
+        target_waypoint_idx = -1
+        if isinstance(thrust_cmd, tuple):
+            motor_thrusts = np.asarray(thrust_cmd[0], dtype=float)
+            target_waypoint_idx = int(thrust_cmd[1])
+        else:
+            motor_thrusts = np.asarray(thrust_cmd, dtype=float)
         if motor_thrusts.shape != (4,):
             raise ValueError("motor_thrust_fn must return a 4-element array [m1, m2, m3, m4] in Newtons.")
 
@@ -161,6 +192,7 @@ def simulate_quadcopter(cfg: DroneDynamicsConfig) -> SimulationResult:
         quat_history[i] = quat
         motor_thrust_history[i] = motor_thrusts
         torque_history[i] = torque_body
+        target_waypoint_idx_history[i] = target_waypoint_idx
 
     return SimulationResult(
         dt=cfg.dt,
@@ -170,5 +202,7 @@ def simulate_quadcopter(cfg: DroneDynamicsConfig) -> SimulationResult:
         quat=quat_history,
         motor_thrust=motor_thrust_history,
         torque=torque_history,
+        target_waypoint_idx=target_waypoint_idx_history,
+        desired_path=cfg.desired_path,
         hover_thrust_per_motor=hover_thrust_per_motor,
     )

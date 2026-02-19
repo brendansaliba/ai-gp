@@ -8,6 +8,7 @@ from drone_dynamics import (
     quat_to_euler,
     simulate_quadcopter,
 )
+from control import SimpleFlightController
 from matplotlib_viewer import MatplotlibQuadViewer
 
 
@@ -39,7 +40,43 @@ def build_motor_thrust_fn(thrust_cfg: dict):
 
         return manual_motor_thrust
 
-    raise ValueError(f"Unsupported thrust.mode '{mode}'. Use 'hover' or 'manual'.")
+    if mode == "flight_controller":
+        waypoints_xyz = np.asarray(thrust_cfg.get("waypoints_xyz", []), dtype=float)
+        if waypoints_xyz.ndim != 2 or waypoints_xyz.shape[1] != 3 or len(waypoints_xyz) == 0:
+            raise ValueError(
+                "For thrust mode 'flight_controller', waypoints_xyz must be a non-empty [N, 3] list."
+            )
+        ctrl_cfg = thrust_cfg.get("controller", {})
+        controller = SimpleFlightController(
+            waypoints_xyz=waypoints_xyz,
+            waypoint_tolerance_m=float(ctrl_cfg.get("waypoint_tolerance_m", 0.6)),
+            max_speed_mps=float(ctrl_cfg.get("max_speed_mps", 3.0)),
+            max_accel_mps2=float(ctrl_cfg.get("max_accel_mps2", 4.0)),
+            max_tilt_deg=float(ctrl_cfg.get("max_tilt_deg", 30.0)),
+            max_motor_thrust_n=float(ctrl_cfg.get("max_motor_thrust_n", 20.0)),
+            max_yaw_rate_rad_s=float(ctrl_cfg.get("max_yaw_rate_rad_s", 0.8)),
+            kp_pos=float(ctrl_cfg.get("kp_pos", 0.8)),
+            ki_pos=float(ctrl_cfg.get("ki_pos", 0.08)),
+            kd_vel=float(ctrl_cfg.get("kd_vel", 1.4)),
+            kp_att_rp=float(ctrl_cfg.get("kp_att_rp", 10.0)),
+            ki_att_rp=float(ctrl_cfg.get("ki_att_rp", 0.8)),
+            kd_rate_xy=float(ctrl_cfg.get("kd_rate_xy", 0.8)),
+            kp_yaw=float(ctrl_cfg.get("kp_yaw", 2.0)),
+            ki_yaw=float(ctrl_cfg.get("ki_yaw", 0.2)),
+            kd_yaw_rate=float(ctrl_cfg.get("kd_yaw_rate", 0.35)),
+            pos_integral_limit=float(ctrl_cfg.get("pos_integral_limit", 6.0)),
+            att_integral_limit=float(ctrl_cfg.get("att_integral_limit", 0.7)),
+            yaw_integral_limit=float(ctrl_cfg.get("yaw_integral_limit", 1.2)),
+        )
+
+        def flight_controller_thrust(t, step_idx, cfg, hover_thrust_per_motor, state):
+            return controller.motor_thrust_command(t, step_idx, cfg, hover_thrust_per_motor, state)
+
+        return flight_controller_thrust
+
+    raise ValueError(
+        f"Unsupported thrust.mode '{mode}'. Use 'hover', 'manual', or 'flight_controller'."
+    )
 
 
 def main():
@@ -59,6 +96,11 @@ def main():
         [init_quat_xyzw[3], init_quat_xyzw[0], init_quat_xyzw[1], init_quat_xyzw[2]],
         dtype=float,
     )
+
+    thrust_fn = build_motor_thrust_fn(thrust_cfg)
+    desired_path = None
+    if thrust_cfg.get("mode", "hover") == "flight_controller":
+        desired_path = np.asarray(thrust_cfg["waypoints_xyz"], dtype=float)
 
     cfg = DroneDynamicsConfig(
         dt=float(sim_cfg["dt"]),
@@ -85,7 +127,8 @@ def main():
         motor_thrust_gust_amp=float(pert_cfg.get("motor_thrust_gust_amp", 0.01)),
         attitude_torque_noise_std=float(pert_cfg.get("attitude_torque_noise_std", 2e-5)),
         attitude_torque_gust_amp=float(pert_cfg.get("attitude_torque_gust_amp", 5e-5)),
-        motor_thrust_fn=build_motor_thrust_fn(thrust_cfg),
+        desired_path=desired_path,
+        motor_thrust_fn=thrust_fn,
     )
     result = simulate_quadcopter(cfg)
 
